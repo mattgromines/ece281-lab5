@@ -1,4 +1,4 @@
---+----------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 --|
 --| NAMING CONVENSIONS :
 --|
@@ -29,7 +29,7 @@ entity top_basys3 is
     port(
         -- inputs
         clk     :   in std_logic; -- native 100MHz FPGA clock
-        sw      :   in std_logic_vector(7 downto 0); -- operands and opcode
+        sw      :   in std_logic_vector(15 downto 0); -- operands and opcode
         btnU    :   in std_logic; -- reset
         btnL    :   in std_logic;
         btnC    :   in std_logic; -- fsm cycle
@@ -102,7 +102,7 @@ signal w_clk: std_logic;
 signal w_A: std_logic_vector (7 downto 0);
 signal w_B: std_logic_vector (7 downto 0);           	
 signal w_result: std_logic_vector (7 downto 0);
-signal w_bin: std_logic_vector (3 downto 0);
+signal w_bin: std_logic_vector (7 downto 0);
 signal w_sign: std_logic;
 signal w_hund: std_logic_vector (3 downto 0);
 signal w_tens: std_logic_vector (3 downto 0);
@@ -112,7 +112,7 @@ signal w_sel: std_logic_vector (3 downto 0);
 signal w_seg: std_logic_vector (6 downto 0);
 signal w_reset: std_logic;
 signal w_D3: std_logic_vector (3 downto 0);
-
+signal w_result_reg: std_logic_vector(7 downto 0);
 
 begin
 	-- PORT MAPS ----------------------------------------
@@ -135,7 +135,7 @@ ALU_inst : ALU
     port map (
         i_A => w_A,
         i_B => w_B,
-        i_op => sw(2 downto 0),
+        i_op => sw(15 downto 13),
         o_flags => led(15 downto 12),
         o_result => w_result
         );
@@ -177,24 +177,38 @@ with w_cycle select
              w_result when "1000",
              "00000000" when others;
 	
-REG_A : process(w_cycle)
-begin   
-    if rising_edge(w_cycle(1)) then
-        w_A <= sw(7 downto 0);
+REG_A : process(clk)
+begin
+    if rising_edge(w_clk) then
+        if w_cycle(1) = '1' then
+            w_A <= sw(7 downto 0);
+        end if;
     end if;
 end process REG_A;
 
-REG_B : process(w_cycle)
+REG_B : process(w_clk)
 begin
-    if rising_edge(w_cycle(2)) then
-        w_B <= sw(7 downto 0);
+    if rising_edge(clk) then
+        if w_cycle(2) = '1' then
+            w_B <= sw(7 downto 0);
+        end if;
     end if;
 end process REG_B;
+
+process(w_clk)
+begin
+    if rising_edge(w_clk) then
+        if w_cycle(3) = '1' then
+            w_result_reg <= w_result;
+        end if;
+    end if;
+end process;
 
 with w_sel select
     seg <= "1000000" when "0111",
            w_seg when others;
     
 an <= w_sel;
-
+led(3 downto 0) <= w_cycle;
+led(11 downto 4) <= (others => '0');
 end top_basys3_arch;
